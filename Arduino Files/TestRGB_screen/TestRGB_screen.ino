@@ -20,10 +20,10 @@ void setup() {
   line[2][0] = matrix.Color333(1, 0, 1);
   line[3][0] = matrix.Color333(1, 1, 0);
 
-  line[0][0] = 0;
+  line[0][1] = 0;
   line[1][1] = 1;
-  line[2][2] = 2;
-  line[3][3] = 3;
+  line[2][1] = 2;
+  line[3][1] = 3;
 }
 
 void loop() {
@@ -37,5 +37,5 @@ void loop() {
     line[i][1] = pos;
     matrix.drawLine(pos, 0, pos, 15,line[i][0]);
   }
-  delay(500);
+  delay(50);
 }
