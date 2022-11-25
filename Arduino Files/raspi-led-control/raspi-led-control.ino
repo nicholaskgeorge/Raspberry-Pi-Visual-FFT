@@ -10,7 +10,7 @@
 #define C   A2
 
 #define horizontal_length 32
-#define num_bars 2
+#define num_bars 5
 #define num_parameters 2
 #define overhead_length 2
 RGBmatrixPanel matrix(A, B, C, CLK, LAT, OE, false);
@@ -38,7 +38,7 @@ void setup() {
   blue = matrix.Color333(1, 0, 1);
   //Initialize all of the bars
   for(int i=0; i<num_bars; i++){
-    line[i][0]=1;
+    line[i][0]=0;
     line[i][1]=white;
   }
 }
