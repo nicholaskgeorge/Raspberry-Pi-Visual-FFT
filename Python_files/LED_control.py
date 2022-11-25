@@ -3,11 +3,15 @@ import serial
 
 class LED():
     def __init__(self):
-        self.bar_data_length=5
+        self.bar_data_length=32
         self.column_height = [0]*self.bar_data_length
-        self.column_color = [1]*self.bar_data_length
+        self.column_color = [2]*self.bar_data_length
         self.ser = serial.Serial('/dev/ttyACM0', 115200);
     def send(self):
-        message = [0x23] + self.column_height + self.column_color + [0xFF]
+        message = [0x23]
+        for i in range(self.bar_data_length):
+            message.append(self.column_height[i])
+            message.append(self.column_color[i])
+        message.append(0xFF)
         print(message)
         self.ser.write(message)

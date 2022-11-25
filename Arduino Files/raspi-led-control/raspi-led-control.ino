@@ -10,7 +10,7 @@
 #define C   A2
 
 #define horizontal_length 32
-#define num_bars 5
+#define num_bars 32
 #define num_parameters 2
 #define overhead_length 2
 RGBmatrixPanel matrix(A, B, C, CLK, LAT, OE, false);
@@ -70,7 +70,7 @@ void loop() {
   matrix.fillScreen(matrix.Color333(0, 0, 0));
   //draw all of the lines
   for(int i=0; i<num_bars; i++){
-    matrix.drawLine(horizontal_length-1-i, 0, horizontal_length-i, line[i][0], line[i][1]);
+    matrix.drawLine(horizontal_length-1-i, 0, horizontal_length-1-i, line[i][0], line[i][1]);
   }
   delay(50);
 }
