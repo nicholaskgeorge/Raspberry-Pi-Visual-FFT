@@ -15,7 +15,7 @@
 #define overhead_length 2
 RGBmatrixPanel matrix(A, B, C, CLK, LAT, OE, false);
 
-#define size_message num_bars*num_parameters+overhead_length
+#define size_message num_bars+overhead_length
 #define data_size num_bars*num_parameters
 
 //Variabe to store all of the bar data, color and height
@@ -29,6 +29,7 @@ int line_index = 0;
 uint16_t red;
 uint16_t white;
 uint16_t blue;
+uint16_t color_list[3];
 
 void setup() {
   Serial.begin(115200);
@@ -37,32 +38,20 @@ void setup() {
   white = matrix.Color333(1, 1, 1);
   blue = matrix.Color333(1, 0, 1);
   //Initialize all of the bars
-  for(int i=0; i<num_bars; i++){
-    line[i][0]=0;
-    line[i][1]=white;
-  }
+  color_list[0] = red;
+  color_list[1] = white;
+  color_list[2] = blue;
 }
                                                                                           
 void loop() {
   while(Serial.available()>0){
     Serial.readBytes(buf ,size_message);
     if(buf[0] == 0x23){
-      for(int buf_index=1; buf_index<data_size; buf_index+=2){
-        line[line_index][0]=buf[buf_index];
-        int color = buf[buf_index+1];
-        if (color == 1){
-          color = red;
-        }
-        else if (color = 2){
-          color = white;
-        }
-        else{
-          color = blue;
-        }
-        line[line_index][1]= color;
-        line_index++;
+      for(int index=0; index<num_bars; index+=1){
+        line[index][0]=buf[index+1]&0b1111;
+        int color = (buf[index+1]>>4);
+        line[index][1]= color_list[color];
       }
-      line_index = 0;
     }
   }
  
@@ -72,5 +61,5 @@ void loop() {
   for(int i=0; i<num_bars; i++){
     matrix.drawLine(horizontal_length-1-i, 0, horizontal_length-1-i, line[i][0], line[i][1]);
   }
-  delay(50);
+  delay(20);
 }
