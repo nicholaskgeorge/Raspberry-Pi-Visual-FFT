@@ -2,7 +2,7 @@ from LED_control import LED
 from time import sleep
 from random import randint
 
-test = LED(bar_data_length=32)
+test = LED(bar_data_length=32, middle_mode=0)
 sleep(2)
 
 while True:

@@ -12,7 +12,7 @@
 #define horizontal_length 32
 #define num_bars 32
 #define num_parameters 2
-#define overhead_length 2
+#define overhead_length 1
 RGBmatrixPanel matrix(A, B, C, CLK, LAT, OE, false);
 
 #define size_message num_bars+overhead_length
@@ -20,6 +20,10 @@ RGBmatrixPanel matrix(A, B, C, CLK, LAT, OE, false);
 
 //Variabe to store all of the bar data, color and height
 uint16_t line[num_bars][num_parameters];
+
+
+int middle_mode = 1;
+int middle_height = 0;
 
 //buffer for data
 byte buf[size_message];
@@ -46,20 +50,24 @@ void setup() {
 void loop() {
   while(Serial.available()>0){
     Serial.readBytes(buf ,size_message);
-    if(buf[0] == 0x23){
-      for(int index=0; index<num_bars; index+=1){
-        line[index][0]=buf[index+1]&0b1111;
-        int color = (buf[index+1]>>4);
-        line[index][1]= color_list[color];
-      }
+    middle_mode = buf[0];
+    for(int index=0; index<num_bars; index+=1){
+      line[index][0]=buf[index+1]&0b1111;
+      int color = (buf[index+1]>>4);
+      line[index][1]= color_list[color];
     }
   }
  
-  
   matrix.fillScreen(matrix.Color333(0, 0, 0));
   //draw all of the lines
   for(int i=0; i<num_bars; i++){
-    matrix.drawLine(horizontal_length-1-i, 0, horizontal_length-1-i, line[i][0], line[i][1]);
+    if(!middle_mode){
+      matrix.drawLine(horizontal_length-1-i, 0, horizontal_length-1-i, line[i][0], line[i][1]);
+    }
+    else{
+      middle_height = line[i][0]/2;
+      matrix.drawLine(horizontal_length-1-i, (7-middle_height), horizontal_length-1-i, (7+middle_height), line[i][1]);
+    }
   }
   delay(20);
 }
