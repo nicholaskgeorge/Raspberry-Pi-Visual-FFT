@@ -1,13 +1,15 @@
-from LED_control import LED
+import LED_control
+import sys
+sys.path.insert(0, 'LED_control')
 from time import sleep
 from random import randint
 
-test = LED(bar_data_length=32, middle_mode=0)
+test = LED_control.LED(bar_data_length=32, middle_mode=0)
 sleep(2)
 
 while True:
     for i in range(test.bar_data_length):
         test.column_height[i] = randint(1,15)
-        test.column_color[i] = randint(0,3)
+        test.column_color[i] = randint(0,2)
     test.send()
-    sleep(0.05)
+    sleep(0.1)

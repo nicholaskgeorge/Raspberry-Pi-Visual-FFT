@@ -40,7 +40,7 @@ void setup() {
   matrix.begin();
   red = matrix.Color333(1, 0, 0);
   white = matrix.Color333(1, 1, 1);
-  blue = matrix.Color333(1, 0, 1);
+  blue = matrix.Color333(0, 0, 1);
   //Initialize all of the bars
   color_list[0] = red;
   color_list[1] = white;
