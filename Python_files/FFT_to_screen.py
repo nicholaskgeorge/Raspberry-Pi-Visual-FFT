@@ -1,11 +1,11 @@
 import serial
 from time import sleep
 import numpy as np
-import matplotlib.pyplot as plt
 from LED_control import LED
 
 ser = serial.Serial('/dev/ttyUSB0', 115200);
 screen = LED(bar_data_length=32, middle_mode=0)
+screen.start()
 while True:
     values = ser.readline().decode('ascii')
     values = values.split(",")[1:-1]
@@ -14,13 +14,12 @@ while True:
     yf = np.fft.fft(values)
     N = len(values)
     if(N == 512):
-        spacing = 512//32
+        spacing = 256//32
         yff = 2.0/N * np.abs(yf[:N//2])
         yff = list(yff)     
-        averaged = [np.max(yff[i:i+spacing]) for i in range(0,N,spacing)]
-        print(len(averaged))
+        averaged = [np.max(yff[i:i+spacing]) for i in range(0,N//2,spacing)]
         for i in range(32):
-            screen.column_height[i] = averaged[i]
+            screen.column_height[i] = int(averaged[i])
     sleep(0.1)
     
     """
