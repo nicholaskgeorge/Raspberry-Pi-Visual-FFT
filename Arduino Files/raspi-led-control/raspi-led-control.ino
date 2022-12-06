@@ -33,7 +33,8 @@ int line_index = 0;
 uint16_t red;
 uint16_t white;
 uint16_t blue;
-uint16_t color_list[3];
+uint16_t green;
+uint16_t color_list[4];
 
 void setup() {
   Serial.begin(115200);
@@ -41,10 +42,12 @@ void setup() {
   red = matrix.Color333(1, 0, 0);
   white = matrix.Color333(1, 1, 1);
   blue = matrix.Color333(0, 0, 1);
+  green =  matrix.Color333(0,1,0);
   //Initialize all of the bars
   color_list[0] = red;
   color_list[1] = white;
   color_list[2] = blue;
+  color_list[3] = green;
 }
                                                                                           
 void loop() {
@@ -52,7 +55,7 @@ void loop() {
     Serial.readBytes(buf ,size_message);
     middle_mode = buf[0];
     for(int index=0; index<num_bars; index+=1){
-      line[index][0]=buf[index+1]&0b1111;
+      line[index][0]= (int)(buf[index+1]&0b1111) >= 15 ? 15 : buf[index+1]&0b1111;
       int color = (buf[index+1]>>4);
       line[index][1]= color_list[color];
     }

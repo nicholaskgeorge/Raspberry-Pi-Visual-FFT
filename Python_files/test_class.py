@@ -9,7 +9,7 @@ sleep(2)
 
 while True:
     for i in range(test.bar_data_length):
-        test.column_height[i] = randint(1,15)
+        test.column_height[i] = 50
         test.column_color[i] = randint(0,2)
     test.send()
     sleep(0.1)
