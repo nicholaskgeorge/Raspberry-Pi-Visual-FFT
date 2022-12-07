@@ -5,7 +5,7 @@ from LED_control import LED
 
 ser = serial.Serial('/dev/ttyUSB0', 115200);
 screen = LED(bar_data_length=32, middle_mode=0)
-display_mode = "1 max"
+display_mode = "3 max"
 filtering = True
 screen.start()
 while True:
@@ -24,7 +24,7 @@ while True:
         if display_mode == "1 max":
             index = yff[1:].argmax()
             yff = list(yff)
-            print(yff[0])
+            #print(yff[0])
             for i in range(32):
                 if i==index+1:
                     screen.column_color[i] = 2
