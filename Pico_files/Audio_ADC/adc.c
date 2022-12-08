@@ -7,24 +7,13 @@
  * Core 0 computes and displays the FFT. Core 1 blinks the LED.
  *
  * HARDWARE CONNECTIONS
- *  - GPIO 16 (SPI0 Rx) ---> MOSI
- *  - GPIO 17 (SPI0 CSn) ---> MISO 
- *  - GPIO 18 ---> 330 ohm resistor ---> VGA Red
- *  - GPIO 19 ---> 330 ohm resistor ---> VGA Green
- *  - GPIO 20 ---> 330 ohm resistor ---> VGA Blue
- *  - RP2040 GND ---> VGA GND
  *  - GPIO 26 ---> Audio input [0-3.3V]
  *
  * RESOURCES USED
- *  - PIO state machines 0, 1, and 2 on PIO instance 0
- *  - DMA channels 0, 1, 2, and 3
  *  - ADC channel 0
- *  - 153.6 kBytes of RAM (for pixel color data)
  *
  */
 
-// Include VGA graphics library
-#include "vga_graphics.h"
 // Include standard libraries
 #include <stdio.h>
 #include <stdlib.h>
@@ -58,10 +47,8 @@ typedef signed int fix15 ;
 // ADC Channel and pin
 #define ADC_CHAN 0
 #define ADC_PIN 26
-// Number of samples per FFT
+// Number of samples
 #define NUM_SAMPLES 64
-// Number of samples per FFT, minus 1
-#define NUM_SAMPLES_M_1 1023
 // Length of short (16 bits) minus log2 number of samples (10)
 #define SHIFT_AMOUNT 6
 // Log2 number of samples
@@ -71,7 +58,7 @@ typedef signed int fix15 ;
 // ADC clock rate (unmutable!)
 #define ADCCLK 48000000.0
 
-// DMA channels for sampling ADC (VGA driver uses 0 and 1)
+// DMA channels for sampling ADC
 int sample_chan = 2 ;
 int control_chan = 3 ;
 
