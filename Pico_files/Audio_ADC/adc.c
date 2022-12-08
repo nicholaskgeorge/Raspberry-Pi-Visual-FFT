@@ -1,10 +1,10 @@
 /**
+ * ECE5725_PROJECT: VISUAL FFT by Amy Wang (yw575) and Nick George (nkg37)
+ * 
+ * Code took heavy inspiration from:
  * Hunter Adams (vha3@cornell.edu)
  * 
- * This demonstration calculates an FFT of audio input, and
- * then displays that FFT on a 640x480 VGA display.
- * 
- * Core 0 computes and displays the FFT. Core 1 blinks the LED.
+ * Core 0 collects audio samples and does ADC. Core 1 blinks the LED (to make sure the Pico is working).
  *
  * HARDWARE CONNECTIONS
  *  - GPIO 26 ---> Audio input [0-3.3V]
@@ -49,10 +49,6 @@ typedef signed int fix15 ;
 #define ADC_PIN 26
 // Number of samples
 #define NUM_SAMPLES 64
-// Length of short (16 bits) minus log2 number of samples (10)
-#define SHIFT_AMOUNT 6
-// Log2 number of samples
-#define LOG2_NUM_SAMPLES 10
 // Sample rate (Hz)
 #define Fs 10000.0
 // ADC clock rate (unmutable!)
@@ -66,149 +62,37 @@ int control_chan = 3 ;
 #define max(a,b) ((a>b)?a:b)
 #define min(a,b) ((a<b)?a:b)
 
-//#define uart0   ((uart_inst_t *)uart0_hw)
-
-// 0.4 in fixed point (used for alpha max plus beta min)
-fix15 zero_point_4 = float2fix15(0.4) ;
-
 // Here's where we'll have the DMA channel put ADC samples
 uint8_t sample_array[NUM_SAMPLES] ;
-// And here's where we'll copy those samples for FFT calculation
-fix15 fr[NUM_SAMPLES] ;
-fix15 fi[NUM_SAMPLES] ;
 
-float fr_float[NUM_SAMPLES] ;
-float fi_float[NUM_SAMPLES] ;
-
+// int array for audio samples
 int fr_int[NUM_SAMPLES] ;
 
-float * uart_array;
+//variables used to convert audio samples to a char array
 char *str;
 char *str2;
 char *c;
-// float * uart_array;
-//const uint8_t uart_array[4] = {1,2,3,4};
-
-// Sine table for the FFT calculation
-fix15 Sinewave[NUM_SAMPLES]; 
-// Hann window table for FFT calculation
-fix15 window[NUM_SAMPLES]; 
 
 // Pointer to address of start of sample buffer
 uint8_t * sample_address_pointer = &sample_array[0] ;
-
-// Peforms an in-place FFT. For more information about how this
-// algorithm works, please see https://vanhunteradams.com/FFT/FFT.html
-
-void FFTfix(fix15 fr[], fix15 fi[]) {
-    
-    unsigned short m;   // one of the indices being swapped
-    unsigned short mr ; // the other index being swapped (r for reversed)
-    fix15 tr, ti ; // for temporary storage while swapping, and during iteration
-    
-    int i, j ; // indices being combined in Danielson-Lanczos part of the algorithm
-    int L ;    // length of the FFT's being combined
-    int k ;    // used for looking up trig values from sine table
-    
-    int istep ; // length of the FFT which results from combining two FFT's
-    
-    fix15 wr, wi ; // trigonometric values from lookup table
-    fix15 qr, qi ; // temporary variables used during DL part of the algorithm
-    
-    //////////////////////////////////////////////////////////////////////////
-    ////////////////////////// BIT REVERSAL //////////////////////////////////
-    //////////////////////////////////////////////////////////////////////////
-    // Bit reversal code below based on that found here: 
-    // https://graphics.stanford.edu/~seander/bithacks.html#BitReverseObvious
-    for (m=1; m<NUM_SAMPLES_M_1; m++) {
-        // swap odd and even bits
-        mr = ((m >> 1) & 0x5555) | ((m & 0x5555) << 1);
-        // swap consecutive pairs
-        mr = ((mr >> 2) & 0x3333) | ((mr & 0x3333) << 2);
-        // swap nibbles ... 
-        mr = ((mr >> 4) & 0x0F0F) | ((mr & 0x0F0F) << 4);
-        // swap bytes
-        mr = ((mr >> 8) & 0x00FF) | ((mr & 0x00FF) << 8);
-        // shift down mr
-        mr >>= SHIFT_AMOUNT ;
-        // don't swap that which has already been swapped
-        if (mr<=m) continue ;
-        // swap the bit-reveresed indices
-        tr = fr[m] ;
-        fr[m] = fr[mr] ;
-        fr[mr] = tr ;
-        ti = fi[m] ;
-        fi[m] = fi[mr] ;
-        fi[mr] = ti ;
-    }
-    //////////////////////////////////////////////////////////////////////////
-    ////////////////////////// Danielson-Lanczos //////////////////////////////
-    //////////////////////////////////////////////////////////////////////////
-    // Adapted from code by:
-    // Tom Roberts 11/8/89 and Malcolm Slaney 12/15/94 malcolm@interval.com
-    // Length of the FFT's being combined (starts at 1)
-    L = 1 ;
-    // Log2 of number of samples, minus 1
-    k = LOG2_NUM_SAMPLES - 1 ;
-    // While the length of the FFT's being combined is less than the number 
-    // of gathered samples . . .
-    while (L < NUM_SAMPLES) {
-        // Determine the length of the FFT which will result from combining two FFT's
-        istep = L<<1 ;
-        // For each element in the FFT's that are being combined . . .
-        for (m=0; m<L; ++m) { 
-            // Lookup the trig values for that element
-            j = m << k ;                         // index of the sine table
-            wr =  Sinewave[j + NUM_SAMPLES/4] ; // cos(2pi m/N)
-            wi = -Sinewave[j] ;                 // sin(2pi m/N)
-            wr >>= 1 ;                          // divide by two
-            wi >>= 1 ;                          // divide by two
-            // i gets the index of one of the FFT elements being combined
-            for (i=m; i<NUM_SAMPLES; i+=istep) {
-                // j gets the index of the FFT element being combined with i
-                j = i + L ;
-                // compute the trig terms (bottom half of the above matrix)
-                tr = multfix15(wr, fr[j]) - multfix15(wi, fi[j]) ;
-                ti = multfix15(wr, fi[j]) + multfix15(wi, fr[j]) ;
-                // divide ith index elements by two (top half of above matrix)
-                qr = fr[i]>>1 ;
-                qi = fi[i]>>1 ;
-                // compute the new values at each index
-                fr[j] = qr - tr ;
-                fi[j] = qi - ti ;
-                fr[i] = qr + tr ;
-                fi[i] = qi + ti ;
-            }    
-        }
-        --k ;
-        L = istep ;
-    }
-}
 
 // Runs on core 0
 static PT_THREAD (protothread_fft(struct pt *pt))
 {
     // Indicate beginning of thread
     PT_BEGIN(pt) ;
-    //printf("Starting capture\n") ;
     // Start the ADC channel
     dma_start_channel_mask((1u << sample_chan)) ;
     // Start the ADC
     adc_run(true) ;
 
-    // Declare some static variables
-    static int height ;             // for scaling display
-    static float max_freqency ;     // holds max frequency
-    static int i ;                  // incrementing loop variable
+    //static variable: incrementing loop variable
+    static int i ;                  
 
-    static fix15 max_fr ;           // temporary variable for max freq calculation
-    static int max_fr_dex ;         // index of max frequency
-
-    // Will be used to write dynamic text to screen
-    static char freqtext[40];
 
     char *str;
     str = "\n";
+    //allocate memory for the char arrays
     char *str2 = malloc(64*NUM_SAMPLES*sizeof(char));
     char *c = malloc(4*sizeof(char)); 
 
@@ -217,81 +101,35 @@ static PT_THREAD (protothread_fft(struct pt *pt))
         // Measure wait time with timer. THIS IS BLOCKING
         dma_channel_wait_for_finish_blocking(sample_chan);
 
-        // Copy/window elements into a fixed-point array
-        /*for (i=0; i<NUM_SAMPLES; i++) {
-            fr[i] = multfix15(int2fix15((int)sample_array[i]), window[i]) ;
-            fi[i] = (fix15) 0 ;
-        }*/
-        // printf("orig: ");
+        //copy in audio samples
         for (i=0; i<NUM_SAMPLES; i++) {
-            // fr[i] = multfix15(int2fix15((int)sample_array[i]), (window[i]));
             fr_int[i]=((int)sample_array[i]);
-            // printf("%g ?=", fr_float[i]);
-            // printf("%g, ", fix2float15(fr[i]));
         }
 
+        //initialize a 0 as the first char in the array
         str = "0,";
-        // printf("start converting\n");
-        // printf("----------------------------\n");
-
+        //copy str to str2
         strcpy(str2, str);
+
+        //convert the integer audio samples array into a char array
         for (int i=0; i<NUM_SAMPLES+1; i++) {
-            // strcpy(str2, str);
-            // c = malloc(strlen(str)+1+4);
             c = malloc(4*sizeof(char));
-            // c = realloc(c, 4*sizeof(float));//size of the number
+
             if(i == NUM_SAMPLES){
                 sprintf(c, "\n", fr_int[i]);
             }else{
                 sprintf(c, "%d,", fr_int[i]);
             }
-            // sprintf(c, "%d,", fr_int[i]);
+
             strcat(str2, c);
             free(c);
-            // str = calloc(strlen(str2)+1, sizeof(float));
-            // strcpy(str, str2);
         }
-        // printf("str: %s\n", str);
-        // printf("str2: %s\n", str2);
+
+        //write the char array to uart to be sent to the Pi THIS IS BLOCKING
         uart_puts(uart0, str2);
-        // free(str);
-        // printf("end sending\n");
-        // printf("----------------------------\n");
-        // Restart the sample channel, now that we have our copy of the samples
-        dma_channel_start(control_chan) ;
-        /*
-        // Zero max frequency and max frequency index
-        max_fr = 0 ;
-        max_fr_dex = 0 ;
 
         // Restart the sample channel, now that we have our copy of the samples
-        dma_channel_start(control_chan) ;
-        
-        // Compute the FFT
-        FFTfix(fr, fi) ;
-
-        // Find the magnitudes (alpha max plus beta min)
-        for (int i = 0; i < (NUM_SAMPLES>>1); i++) {  
-            // get the approx magnitude
-            fr[i] = abs(fr[i]); 
-            fi[i] = abs(fi[i]);
-            // reuse fr to hold magnitude
-            fr[i] = max(fr[i], fi[i]) + 
-                    multfix15(min(fr[i], fi[i]), zero_point_4); 
-
-            // Keep track of maximum
-            if (fr[i] > max_fr && i>4) {
-                max_fr = fr[i] ;
-                max_fr_dex = i ;
-            }
-        }
-        // Compute max frequency in Hz
-        max_freqency = max_fr_dex * (Fs/NUM_SAMPLES) ;
-
-        // Display max freq from FFT
-        printf("max freq: %d\n", (int)max_freqency) ;
-        */
-
+        dma_channel_start(control_chan);
     }
     PT_END(pt) ;
 }
@@ -317,8 +155,6 @@ void core1_entry() {
 
 // Core 0 entry point
 int main() {
-    //printf("test! Hello :)\n");
-
     // Initialise UART 0
     uart_init(uart0, 115200);
  
@@ -365,14 +201,6 @@ int main() {
     // to grab a sample at 10kHz (48Mhz/10kHz - 1)
     adc_set_clkdiv(ADCCLK/Fs);
 
-
-    // Populate the sine table and Hann window table
-    int ii;
-    for (ii = 0; ii < NUM_SAMPLES; ii++) {
-        Sinewave[ii] = float2fix15(sin(6.283 * ((float) ii) / (float)NUM_SAMPLES));
-        window[ii] = float2fix15(0.5 * (1.0 - cos(6.283 * ((float) ii) / ((float)NUM_SAMPLES))));
-    }
-
     /////////////////////////////////////////////////////////////////////////////////
     // ============================== ADC DMA CONFIGURATION =========================
     /////////////////////////////////////////////////////////////////////////////////
@@ -416,154 +244,6 @@ int main() {
     // Launch core 1
     multicore_launch_core1(core1_entry);
     
-    // uart_array = malloc(4 * sizeof(float));
-
-    // uart_array[0] = 1.0;
-    // uart_array[1] = 2.0;
-    // uart_array[2] = 3.0;
-    // uart_array[3] = 4.0;
-
-    /*
-    uart_array = malloc(4 * sizeof(float));
-
-    // for (int i=0; i<4; i++) {
-    //     char *uart_array[i] = malloc(4 * sizeof(char));
-    // }
-     
-    // //float x = 1.0;
-    uart_array[0] = 1.0;
-    uart_array[1] = 2.0;
-    uart_array[2] = 3.0;
-    uart_array[3] = 4.0;
-    // printf("before turning into string array: ");
-    // for (int i=0; i<4; i++) {
-    //     printf("%f, ", uart_array[i]);
-    // }
-    // printf("\n");
-
-    //char s[] = "testing";
-    //char s[];
-
-    // s[0] = 1.0;
-    // s[1] = 2.0;
-    // s[2] = 3.0;
-    // s[3] = 4.0;
-    //sprintf(s, "%lf", uart_array);
-
-    
-    // char *str = malloc(64*sizeof(char));
-    // str = "start: ";
-    // char *str2 = malloc(strlen(str) + 5 + 1);
-
-    for (int i=0; i<7; i++) {
-        char *c; 
-        if(i%2 == 0){
-            char *str2 = malloc(strlen(str) + 5 + 1);
-            // char *str2 = realloc(str2, strlen(str) + 5 + 1);
-            strcpy(str2, str);
-            char *c = malloc(strlen(str)+1+4);
-            // c = realloc(c, strlen(str)+1+4);//size of the number
-            sprintf(c, "%f", uart_array[i/2]);
-            strcat(str2, c);
-            str = calloc(4, strlen(str2)+1);
-            strcpy(str, str2);
-        }
-        else{
-            char *str2 = malloc(strlen(str) + 5 + 1);
-            // char *str2 = realloc(str2, strlen(str) + 5 + 1);
-            strcpy(str2, str);
-            char *c = malloc(4*sizeof(char)); 
-            // char *c = realloc(c, 4*sizeof(char)); 
-            c = ", ";
-            strcat(str2, c);
-            str = calloc(4, strlen(str2)+1);
-            strcpy(str, str2);
-        }
-        // free(str);
-        free(str2);
-        free(c);
-    }
-    
-    printf("----------------------------\n");
-    printf("out of loop\n");
-    printf("str: %s\n", str);
-    printf("str2: %s\n", str2);
-    */
-
-    // char *str = "abcd ";
-    //char c = 'e';
-
-    // size_t len = strlen(str);
-
-    // float f = 1234;
-    // char *c; 
-    // c = malloc(strlen(str)+1+4);//size of the number
-    // sprintf(c, "%g", f);
-
-    /* one for extra char, one for trailing zero */
-    // char *str2 = malloc(len + 1 + 1);
-
-    // strcpy(str2, str); /* copy name into the new var */
-    //strcat(str2, c); /* add the extension */
-
-    // free(str2);
-    // printf("----------------------------\n");
-
-    // while(1){
-        // uart_puts(uart0, str);
-    // }
-    // printf("\n");
-    // printf("str: %s\n", str);
-    // printf("str2: %s\n", str2);
-
-    // while(1){
-        // uart_write_blocking(uart0, uart_array, 16);
-    // }
-    /*
-    int array_l = 50;
-    uart_array = malloc(array_l * sizeof(float));
-    // char *str = malloc(64*sizeof(char));
-    char *str;
-    str = "start: ";
-    // char *str2 = malloc(strlen(str) + 5 + 1);
-    char *str2 = malloc(64*array_l*sizeof(char));
-    char *c = malloc(strlen(str)+1+4); 
-    // char *cc = malloc(2*sizeof(char)); 
-
-    while(1) {
-        str = "start: ";
-
-        printf("orig: ");
-        for (int i=0; i<array_l; i++) {
-            uart_array[i] = i*2+1;
-        }
-        printf("start converting\n");
-        printf("----------------------------\n");
-
-        strcpy(str2, str);
-        for (int i=0; i<array_l; i++) {
-            // strcpy(str2, str);
-            // c = malloc(strlen(str)+1+4);
-            c = malloc(4*sizeof(char));
-            // c = realloc(c, 4*sizeof(float));//size of the number
-            sprintf(c, "%d, ", (int)uart_array[i]);
-            strcat(str2, c);
-            free(c);
-            // str = calloc(strlen(str2)+1, sizeof(float));
-            // strcpy(str, str2);
-        }
-        // printf("str: %s\n", str);
-        // printf("str2: %s\n", str2);
-        uart_puts(uart0, str2);
-        // free(str);
-        printf("end sending\n");
-        printf("----------------------------\n");
-        // free(str);
-        // free(str2);
-        // free(c);
-        // free(uart_array);
-    }*/
-    // Add and schedule core 0 threads
     pt_add_thread(protothread_fft) ;
     pt_schedule_start ;
 
