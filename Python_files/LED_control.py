@@ -1,3 +1,7 @@
+# By Amy Wang (yw575) and Nick George (nkg37)
+# ECE 5725 Final Project: Visual FFT
+# LED_controls.py :controls how data is displayed on the LED screen
+
 from threading import Thread
 import serial
 from time import sleep
