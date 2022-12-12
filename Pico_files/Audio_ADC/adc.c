@@ -1,7 +1,8 @@
 /**
  * ECE5725_PROJECT: VISUAL FFT by Amy Wang (yw575) and Nick George (nkg37)
- * 
- * Code took heavy inspiration from:
+ * adc.c
+ *
+ * Code took inspiration from:
  * Hunter Adams (vha3@cornell.edu)
  * 
  * Core 0 collects audio samples and does ADC. Core 1 blinks the LED (to make sure the Pico is working).
