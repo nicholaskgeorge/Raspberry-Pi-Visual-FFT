@@ -1,3 +1,7 @@
+// By Amy Wang (yw575) and Nick George (nkg37)
+// ECE 5725 Final Project: Visual FFT
+// raspi-led-control.ino: Arduino Uno controls LED screen
+
 #include <RGBmatrixPanel.h>
 
 #define CLK  8   // USE THIS ON ARDUINO UNO, ADAFRUIT METRO M0, etc.
