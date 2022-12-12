@@ -1,3 +1,7 @@
+# By Amy Wang (yw575) and Nick George (nkg37)
+# ECE 5725 Final Project: Visual FFT
+# FFT_screen_class.py :calculates FFT and send the data to the Arduino Uno
+
 import serial
 from time import sleep
 import numpy as np
